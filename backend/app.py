@@ -87,3 +87,9 @@ def train(config: dict):
 
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+import uvicorn
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=10000)
