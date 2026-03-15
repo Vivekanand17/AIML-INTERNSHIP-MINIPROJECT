@@ -3,6 +3,5 @@ uvicorn
 pandas
 numpy
 scikit-learn
-tensorflow
 python-multipart
-matplotlib
+tensorflow
