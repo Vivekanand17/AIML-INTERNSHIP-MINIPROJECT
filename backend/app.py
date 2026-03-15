@@ -9,6 +9,10 @@ from train import train_model
 
 app = FastAPI()
 
+@app.get("/")
+def home():
+    return {"message": "AI ML Internship Project Backend Running Successfully"}
+
 # ✅ CORS CONFIGURATION
 app.add_middleware(
     CORSMiddleware,
