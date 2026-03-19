@@ -2,7 +2,7 @@ import numpy as np
 import json
 import os
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error, accuracy_score
 from models import *
 from utils import detect_diagnostics
 
@@ -19,6 +19,7 @@ def train_model(data, target_column, model_type, params):
         random_state=42
     )
 
+    is_classification = y_train.nunique() <= 10
     logs = {"train_loss": [], "val_loss": []}
 
     if model_type == "linear":
@@ -44,22 +45,31 @@ def train_model(data, target_column, model_type, params):
         logs["val_loss"].append(mean_squared_error(y_val, val_pred))
 
     elif model_type == "mlp":
-        model = get_mlp_model(
-            X_train.shape[1],
-            params.get("hidden_units", 32),
-            params.get("learning_rate", 0.001)
-        )
-
-        history = model.fit(
-            X_train, y_train,
-            validation_data=(X_val, y_val),
-            epochs=params.get("epochs", 20),
-            batch_size=params.get("batch_size", 32),
-            verbose=0
-        )
-
-        logs["train_loss"] = history.history["loss"]
-        logs["val_loss"] = history.history["val_loss"]
+        epochs = params.get("epochs", 100)
+        input_dim = X_train.shape[1]
+        hidden_units = params.get("hidden_units", 64)
+        learning_rate = params.get("learning_rate", 0.001)
+        
+        if is_classification:
+            model = get_mlp_classifier(input_dim, hidden_units, learning_rate)
+        else:
+            model = get_mlp_regressor(input_dim, hidden_units, learning_rate)
+        # Set max_iter dynamically if supported, but since in model init, note: sklearn MLP max_iter is fixed but early_stopping stops early
+        model.max_iter = epochs  # Override for flexibility
+        
+        model.fit(X_train, y_train)
+        
+        # Use loss_curve_ for train losses
+        logs["train_loss"] = model.loss_curve_.tolist()
+        
+        # Simulate val_loss
+        val_pred = model.predict(X_val)
+        if is_classification:
+            val_acc = accuracy_score(y_val, val_pred)
+            val_loss_val = 1 - val_acc  # Pseudo loss (1 - accuracy)
+        else:
+            val_loss_val = mean_squared_error(y_val, val_pred)
+        logs["val_loss"] = [val_loss_val] * len(logs["train_loss"])
 
     diagnostics = detect_diagnostics(
         logs["train_loss"],
